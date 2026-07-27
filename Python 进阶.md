@@ -769,7 +769,7 @@ write()
 students.txt
 ```
 
-# 闭包（Closure）和装饰器（Decorator）与深浅拷贝
+# 第三章 闭包（Closure）和装饰器（Decorator）与深浅拷贝
 
 ## 1. 闭包（Closure）
 
@@ -1314,3 +1314,580 @@ set
 - **浅拷贝**：创建新的树根，但树枝仍然连接着原来的对象。
 - **深拷贝**：从树根开始，把整棵树重新创建一遍，因此两棵树完全独立。
 
+# 第四章 网编和多线程
+
+网编：用来实现不同计算机上进行的，程序间数据交互（IP、端口号、协议）
+进程、线程都是程序（CPU）实现多任务的手段。
+
+进程（Process）=CPU分配资源的最小单位
+线程（Thread）=CPU调度资源的基本单位
+
+进程间数据隔离，线程间数据共享。
+
+## 1. 网络编程
+
+将具有独立功能的多台计算机通过通信线路和通信设备连接起来，在网络管理软件及网络通信协议下，实现资源共享和信息传递的虚拟平台。
+
+网编三要素：
+IP地址、端口、协议
+### 1）定位设备——IP地址
+
+IP地址是标识网络设备中的唯一地址，可以理解成：**网络中的地址。**
+每个网络中的设备都有自己的IP地址。
+
+IPV4：
+	4字节，十进制，例如：192.168.88.100
+
+IPV6:
+	8字节，十六进制
+
+两个DOS命令：
+	查看IP：
+		windows：ipconfig
+		Linux、Mac：ifconfig
+	测试网络连接：
+		ping ip地址或者域名
+
+### 2）定位程序——端口号
+
+一台电脑通常不会只运行一个程序，那数据到了电脑以后应该交给谁？
+
+于是就有：**端口号（Port）**
+每个软件都有自己的端口。
+
+知名端口号：指众所周知的端口号，范围从0到1023，自定义端口时尽量规避这个范围。
+动态端口号：一般程序员开发应用程序使用的端口号称为动态端口号，范围是从1024到65535。
+
+例如：
+```
+192.168.1.100
+        │
+        ├──80
+        │   浏览器
+        │
+        ├──3306
+        │   MySQL
+        │
+        ├──8080
+        │   Spring Boot
+        │
+        └──5000
+            Python程序
+```
+
+所以，端口号负责定位具体程序。
+
+因此真正的定位其实是：
+```
+IP
++
+Port
+```
+
+例如：
+```
+192.168.1.100:8080
+```
+
+意思就是：找到这台电脑上的8080 端口程序。
+
+一个简化对应关系：
+|**元素**|**作用**|
+|---|---|
+|IP|找到哪台设备|
+|Port|找到设备上的哪个程序|
+|Socket|在两个程序之间建立通信通道|
+
+**通过 IP 定位目标设备，通过端口号定位目标程序，再利用 Socket 建立通信，让两个程序能够交换数据。**
+
+### 3）通信协议
+
+协议定义通信规则，符合协议可以通信，否则无法通信。
+
+TCP（Transmission Control Protocol)简称传输控制协议，是一种面向连接的、可靠的、基于字节流的传输层通信协议，使用得最多。
+
+TCP的特点：
+- 面向有连接
+- 采用字节流传输数据，理论无大小限制
+- 安全（可靠）协议，
+- 效率相对UDP协议较低
+- 区分客户端和服务器端
+
+TCP建立连接（三次握手）：
+- 客户端向服务端发送请求，等待服务端确认
+- 服务端收到请求后回复给客户端以确认连接请求。
+- 客户端收到确认后，再次发送请求确认服务端，服务端收到正确请求后，如果正确则连接建立成功，完成三次握手，随后客户端与服务端之间可以开始传输数据了。
+
+TCP断开连接（四次挥手）：
+- 当主机A完成数据传输后，提出停止TCP连接请求
+- 主机B收到请求后对其作出回应，确认这一方向上的TCP连接将关闭
+- 主机B端提出反方向的连接关闭请求
+- A对B的请求进行确认，双方想的关闭结束
+
+UDP协议
+
+## 2. 创建Socket对象
+
+socket简称套接字，是进程之间通信的一个工具。
+通信双方都堵有自己的socket对象，数据在socket之间通过数据包（UDP）或者字节流（TCP）
+的形式进行传输
+
+socket能实现不同主机之间的进程间通信，Python中有专门的socket类。
+```
+#导入socket模块
+import socket
+```
+
+要使用socket，则通常要使用到socket模块下的socket类创建socket对象。
+`socket(AddressFaminyType)`
+
+创建socket对象的示例代码：
+```
+import socket
+
+#参1：Address Family，地址值，即Ipv4还是Ipv6 默认值：AF_INFT(ipv4) AF_INFT(ipv6)
+#参2:Socket Type，Socket类型，即TCP还是UDP 默认值SOCKET_STREAM(TCP) SOCKET_STREAM(UDP)
+
+socket_obj = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+print(socket_obj)
+```
+
+输出：
+```
+asa@Master-4 PythonLearning % /usr/local/bin/python3 "/Users/asa/Desktop/PythonLear
+ning/advanced_course/class 04/socket_using.py"
+<socket.socket fd=3, family=2, type=1, proto=0, laddr=('0.0.0.0', 0)>
+```
+
+### TCP程序开发流程
+
+TCP网络应用程序开发分为：
+- TCP服务端程序开发
+```
+先启动
+绑定 IP 和端口
+持续等待客户端连接
+```
+- TCP客户端程序开发
+```
+主动找到服务端的 IP 和端口
+发起连接
+连接成功后收发数据
+```
+
+流程图：
+![[Pasted image 20260727131958.png]]
+
+**TCP服务端开发流程：**
+1. 创建 Socket
+2. 绑定 IP 和端口
+3. 设置监听
+4. 等待客户端连接
+5. 接收或发送数据
+6. 关闭连接
+
+Python中大致会写成：
+```
+import socket
+
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+server_socket.bind(("127.0.0.1", 8080))
+
+server_socket.listen()
+
+client_socket, client_address = server_socket.accept()
+
+data = client_socket.recv(1024)
+print(data.decode("utf-8"))
+
+client_socket.send("消息已收到".encode("utf-8"))
+
+client_socket.close()
+server_socket.close()
+```
+
+**1️⃣ 创建服务端Socket**
+```
+server_socket = socket.socket(
+    socket.AF_INET,
+    socket.SOCK_STREAM
+)
+```
+
+这里创建的是一个 Socket 对象。
+
+两个参数分别表示：
+```
+AF_INET
+使用 IPv4 地址
+
+SOCK_STREAM
+使用面向连接的字节流通信，也就是 TCP
+```
+
+所以这句可以理解成：创建一个使用 IPv4 和 TCP 协议的网络通信接口。
+
+**2️⃣ 绑定IP和端口**
+```
+server_socket.bind(("127.0.0.1", 8080))
+```
+
+`bind()` 的作用是：给服务端 Socket 指定一个固定的本地地址。
+
+这里传入的是一个元组：`("127.0.0.1", 8080)`
+表示：
+```
+127.0.0.1
+只允许本机访问
+
+8080
+使用本机的 8080 端口
+```
+
+**3️⃣ 设置监听**
+```
+server_socket.listen()
+```
+
+这一句的作用是：把这个普通 Socket 变成监听 Socket。
+它监听的是：**客户端的连接请求。**
+
+**4️⃣ 等待客户端连接**
+```
+client_socket, client_address = server_socket.accept()
+```
+
+`accept()` 的作用是：等待某个客户端连接进来。
+它通常是一个**阻塞操作**,也就是说，如果暂时没有客户端连接，程序就会停在这里等着。
+```
+服务端运行到 accept()
+        ↓
+没有客户端
+        ↓
+一直等待
+```
+
+它会返回两个东西：
+```
+client_socket:它不是原来的server——socket，而是专门负责和这一个客户端通信的新socket
+所以服务端这里实际上会出现两个 Socket：
+	server_socket：负责监听新的连接
+	client_socket：负责和已连接的客户端收发数据
+这里的server_socket类似于餐厅的reception，负责接待更多客户端（监听新的连接）
+
+client_address:客户端的地址
+例如：("127.0.0.1", 53124)
+	其中，
+	127.0.0.1: 客户端 IP
+	53124: 客户端临时端口
+```
+
+**5️⃣ 接收客户端数据**
+```
+data = client_socket.recv(1024)
+```
+`recv()` 表示：从连接中接收数据。
+这里的 `1024` 表示：本次最多接收 1024 字节(不是字符)
+
+`recv()`返回的也是字节数据`bytes`，徐国祥要转换成字符串，需要解码：
+```
+message = data.decode("utf-8")
+```
+
+完整写法：
+```
+data = client_socket.recv(1024)
+message = data.decode("utf-8")
+print(message)
+```
+
+ **`recv()`也可能阻塞**，如果客户端暂时没有发送任何数据，服务端通常会停在这里等。
+
+**6️⃣ 向客户端发送数据**
+```
+client_socket.send("消息已收到".encode("utf-8"))
+```
+
+网络传输一般发送的是字节数据，字符串不能直接发送，所以需要先编码：
+```
+"消息已收到".encode("utf-8")
+```
+得到`bytes`，然后再发送。
+
+也可写作：
+```
+client_socket.sendall(
+    "消息已收到".encode("utf-8")
+)
+```
+`sendall()` 会尽力把所有数据发送完。
+
+两者的区别可大致理解成：
+```
+send()
+发送一部分或全部数据
+
+sendall()
+保证把这一批数据完整交给系统发送
+```
+所以实际写程序时，经常更推荐 `sendall()`。
+
+**7️⃣ 关闭Socket**
+```
+client_socket.close()
+server_socket.close()
+```
+
+两个 Socket 的职责不同，关闭时也要分开理解。
+
+```
+client_socket.close(): 结束和当前客户端的通信。
+
+server_socket.close(): 服务端彻底停止监听，不再接受新的客户端。
+```
+
+如果服务端想长期运行，通常不会每服务一个客户端就立刻关闭 `server_socket`。
+而会放进循环：
+```
+while True:
+    client_socket, client_address = server_socket.accept()
+    ...
+    client_socket.close()
+```
+这样服务端处理完一个客户端之后，还能继续等待下一个客户端。
+
+**TCP客户端的开发流程**
+1. 创建 Socket
+2. 连接服务端
+3. 发送或接收数据
+4. 关闭连接
+
+示例：
+```
+import socket
+
+client_socket = socket.socket(
+    socket.AF_INET,
+    socket.SOCK_STREAM
+)
+
+client_socket.connect(("127.0.0.1", 8080))
+
+client_socket.sendall(
+    "你好，服务端".encode("utf-8")
+)
+
+data = client_socket.recv(1024)
+print(data.decode("utf-8"))
+
+client_socket.close()
+```
+
+**1️⃣ 创建客户端Socket**
+
+和服务端一样：
+```
+client_socket = socket.socket(
+    socket.AF_INET,
+    socket.SOCK_STREAM
+)
+```
+
+表示：创建一个使用 IPv4 和 TCP 的 Socket。
+
+**2️⃣ 连接服务器**
+
+```
+client_socket.connect(("127.0.0.1", 8080))
+```
+
+`connect()` 表示：主动连接指定的服务端。
+**这里填写的地址必须和服务端绑定的地址对应。**
+
+**3️⃣ 发送和接收数据**
+
+客户端发送：
+```
+client_socket.sendall(
+    "你好，服务端".encode("utf-8")
+)
+```
+
+客户端接收：
+```
+data = client_socket.recv(1024)
+```
+
+从连接建立后来看，客户端和服务端其实没有绝对的“发送方”和“接收方”。
+
+TCP 是双向通信，也就是：**双方都可以发，也都可以收。**
+
+### 一个完整的小案例
+
+服务端:
+```
+import socket
+
+server_socket = socket.socket(
+    socket.AF_INET,
+    socket.SOCK_STREAM
+)
+
+server_socket.bind(("127.0.0.1", 8080))
+server_socket.listen()
+
+print("服务端已启动，等待客户端连接……")
+
+client_socket, client_address = server_socket.accept()
+
+print(f"客户端已连接：{client_address}")
+
+data = client_socket.recv(1024)
+message = data.decode("utf-8")
+
+print(f"客户端发来：{message}")
+
+client_socket.sendall(
+    "服务端已经收到消息".encode("utf-8")
+)
+
+client_socket.close()
+server_socket.close()
+```
+
+客户端:
+```
+import socket
+
+client_socket = socket.socket(
+    socket.AF_INET,
+    socket.SOCK_STREAM
+)
+
+client_socket.connect(("127.0.0.1", 8080))
+
+client_socket.sendall(
+    "你好，我是客户端".encode("utf-8")
+)
+
+data = client_socket.recv(1024)
+message = data.decode("utf-8")
+
+print(f"服务端回复：{message}")
+
+client_socket.close()
+```
+
+运行顺序一定是：
+```
+先运行服务端
+再运行客户端
+```
+
+### 端口复用
+
+假如服务端的socket关闭程序后马上再运行，会运行失败。
+这是因为，socket关闭后，**操作系统还没有立即把这个端口释放。**
+
+**`TIME_WAIT`**：
+
+这是 TCP 的一个状态，意思可以理解成：
+**“我知道程序已经结束了，但是我再等一会儿。”`**
+
+这里的“等”是指，
+- 网络里有没有迟到的数据包。
+- 双方是否真的都结束通信。
+
+所以：
+```
+Server关闭
+
+↓
+
+TIME_WAIT
+
+↓
+
+过几十秒
+
+↓
+
+真正释放端口
+```
+
+因此，程序结束了，但是端口暂时还不能重新绑定。
+
+**解决方法：端口复用**
+
+Python 提供了：`setsockopt()`
+
+使用时，
+```
+server_socket.setsockopt(
+    socket.SOL_SOCKET,
+    socket.SO_REUSEADDR,
+    True
+)
+```
+
+这一句必须放在`bind()`之前，例如：
+```
+server_socket = socket.socket(
+    socket.AF_INET,
+    socket.SOCK_STREAM
+)
+
+server_socket.setsockopt(
+    socket.SOL_SOCKET,    #要设置 Socket 本身的选项(Socket设置)
+    socket.SO_REUSEADDR,    #允许重新使用这个地址（IP+端口）
+    True    #开启
+)
+
+server_socket.bind(("192.168.1.100",10086))
+```
+
+```
+端口复用
+
+不是为了多个程序共用端口。
+
+而是为了：
+
+程序刚关闭以后，
+
+能够立即重新使用这个端口。
+```
+
+## 3. 扩展-编解码问题
+
+编码（Encode）：将字符串（str）转换为字节（bytes），方便计算机存储或网络传输。
+`字符串.encode(码表）`
+
+解码（Decode）：将字节（bytes）转换回字符串（str），方便人阅读。
+`字符串.decode(码表）`
+
+### 常见码表
+- ASCII：只支持英文、数字、部分特殊符号。
+- GBK：中文一般占 **2 字节**。
+- UTF-8：中文一般占 **3 字节**，目前最常用。
+
+英文、数字、常见特殊符号在 ASCII、GBK、UTF-8 中通常都是 **1 字节**。
+
+### 二进制数据（bytes）
+
+Python 中：`b"Hello"`表示：`bytes`
+这是二进制数据特殊写法，即`b"字母/数字/特殊符号"`，该方式对中文无效。
+
+即，`b"你好"`不能直接这样写。
+需要：
+```
+"你好".encode("utf-8")
+```
+
+得到：
+```
+b'\xe4\xbd\xa0\xe5\xa5\xbd'
+```
+
+**网络传输、文件存储等底层操作处理的是 bytes，而人阅读和编程通常使用的是 str，因此需要通过 encode() 和 decode() 在两者之间转换。**
