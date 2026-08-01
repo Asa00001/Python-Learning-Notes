@@ -2984,7 +2984,7 @@ lock.release()
 ```
 线程B才有机会获得锁并继续运行。
 
-### 4. 更推荐的写法： with lock
+### 4） 更推荐的写法： with lock
 
 手动写
 ```
@@ -3062,7 +3062,7 @@ with lock:
     # 临界区代码
 ```
 
-### 5. 临界区
+### 5） 临界区
 
 被锁保护的共享数据操作区域，叫：
 
@@ -3145,3 +3145,486 @@ num += 1
 **锁的范围越小越好，但必须完整保护共享数据操作。**
 
 真正需要警惕的不是共享数据本身，而是多个线程同时修改一份共享数据。
+
+## 3. Python迭代器（Iterator）
+
+迭代（Iteration）是按照一定顺序，逐个访问一组数据的过程。
+
+列表、元组、字符串、字典、集合、`range` 等，都可以被 `for` 循环遍历，因此它们属于**可迭代对象（Iterable）**。
+
+**可迭代对象 (Iterable)**
+表示：可以从中获取迭代器，并能够被 `for` 循环遍历的对象。
+
+常见可迭代对象：
+```
+list
+tuple
+str
+dict
+set
+range
+```
+
+迭代器（Iterator）是Python中的一种对象，用于在数据集合中逐个访问元素，而不需要暴露数据集合的底层实现。
+
+迭代器表示：真正负责逐个取出数据，并保存当前迭代位置的对象。
+
+它提供了一种遍历几何元素的标准方式，适用于任何支持迭代的数据结构。
+如列表、元组等，`range()`就是一个迭代器。
+
+迭代器具有两个核心方法：
+```
+__iter__() #返回迭代器对象
+__next__() #返回下一个数据
+```
+
+没有更多数据时，`__next__()`需要：
+```
+raise StopIteration
+```
+
+自定义的类，只要重写了`__iter__()`和`__next__`方法，就可以称为迭代器。
+
+手动管理：需要显示地实现`__iter__()`和`__next__`方法
+状态管理：迭代器需要自己管理迭代的状态，包括当前位置和结束条件。
+内存使用：内存使用取决于迭代器的实现，通常是惰性计算（即按需生成数据）。
+
+### 自定义迭代器
+
+```
+class MyIterator:
+    def __init__(self, start, end):
+        self.current_value = start
+        self.end = end
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.current_value >= self.end:
+            raise StopIteration #终止条件
+
+        value = self.current_value
+        self.current_value += 1
+        return value
+```
+
+使用：
+```
+my_iter = MyIterator(1, 6)
+
+for i in my_iter:
+    print(i)
+```
+
+输出：
+```
+1
+2
+3
+4
+5
+```
+
+### 自定义迭代器的执行过程
+
+初始状态：
+```
+current_value = 1
+end = 6
+```
+
+第一次调用：
+```
+next(my_iter)
+```
+
+返回：`1`
+同时把状态更新为：
+```
+current_value = 2
+```
+之后每调用一次 `next()`，都会继续向后移动。
+
+当：
+```
+current_value >= end
+```
+
+时，抛出：
+```
+StopIteration
+```
+表示迭代结束。
+
+for循环的本质也是基于迭代器的原理：
+```
+获取迭代器
+    ↓
+不断调用 next()
+    ↓
+遇到 StopIteration 后结束
+```
+
+**迭代器的特点**：
+- 按顺序逐个返回数据。
+- 会保存当前迭代位置。
+- 数据取出后不会自动回到起点。
+- 迭代结束后通常不能重新使用，需要重新创建迭代器。
+- 适合处理不需要一次全部加载的数据。
+
+迭代器更像一个记录“当前走到哪里”的对象，而不是数据容器本身。
+
+## 4. Python生成器（Generator）
+
+生成器（Generator）是一种特殊的迭代器
+
+生成器不会一次性准备所有数据，而是在需要时逐个生成数据，因此属于：
+**惰性计算（Lazy Evaluation）**
+
+生成器保存的主要不是所有结果，而是：
+```
+生成数据的规则
++
+当前执行状态
+```
+
+### 1）生成器表达式
+
+列表推导式：
+```
+nums = [i for i in range(1, 11)]
+```
+
+会立即创建完整列表：
+```
+[1, 2, 3, ..., 10]
+```
+
+生成器表达式：
+```
+nums = (i for i in range(1, 11))
+```
+
+创建的是生成器对象：
+```
+print(nums)
+# <generator object ...>
+
+print(type(nums))
+# <class 'generator'>
+```
+此时数据还没有全部生成。
+
+### 2）从生成器中获取数据
+
+可以使用`next()`从生成器中获取数据。
+
+例如：
+```
+even_nums = (i for i in range(1, 11) if i % 2 == 0)
+
+print(next(even_nums))  # 2
+print(next(even_nums))  # 4
+```
+
+之后继续遍历：
+```
+for i in even_nums:
+    print(i)
+```
+
+输出：
+```
+6
+8
+10
+```
+
+这是因为`2, 4`已经被消费，生成器会从之前暂停的位置继续，而不是重新开始。
+
+**生成器是一次性消费的**
+
+生成器内部可以理解为保存了一个执行位置。
+每调用一次：`next(generator)`，生成器就向后运行，返回一个值，然后暂停。
+已经返回的值不会自动保存，也不会再次返回。
+
+所以生成器通常是：**一次性、向前消费的数据流。**
+
+当生成器耗尽后，再继续：`next(generator)`，会抛出`StopIteration`。
+
+### 3）使用yield创建生成器
+
+**生成器函数**
+只要函数中出现`yield`，这个函数就不再是普通函数，而是生成器函数。
+
+例如：
+```
+def my_generator():
+    for i in range(1, 11):
+        yield i
+```
+
+调用：
+```
+my_yield = my_generator()
+```
+
+不会立刻执行函数体，而是创建一个生成器对象。
+```
+print(type(my_yield))
+# <class 'generator'>
+```
+
+`yield value`会完成两件事：
+1. 向调用方产出一个值。
+2. 暂停函数并保存当前状态。
+
+下一次调用：`next(generator)`时，会从上一次暂停的位置继续执行。
+
+执行示例：
+```
+def my_generator():
+    print("函数开始")
+
+    for i in range(1, 4):
+        print(f"准备生成：{i}")
+        yield i
+        print(f"{i}之后继续执行")
+
+    print("函数结束")
+```
+
+测试：
+```
+g = my_generator()
+
+print("生成器已创建")
+print(next(g))
+print(next(g))
+```
+
+调用：
+```
+g = my_generator()
+```
+时，函数体不会执行。
+
+第一次`next(g)`
+执行到`yield 1`，返回1并暂停。
+
+第一次`next(g)`
+从`yield 1`之后继续执行，而不是函数从头开始。
+
+### 4）生成器与迭代器的关系
+
+手写迭代器时，需要自己实现：
+```
+__iter__()
+__next__()
+StopIteration
+```
+
+还需要自己保存：
+```
+self.current_value
+```
+
+生成器函数只需要`yield`，Python 会自动帮助完成：
+- 保存执行位置。
+- 保存局部变量状态。
+- 实现迭代器协议。
+- 迭代完成后产生 `StopIteration`。
+
+所以可以理解为：**生成器是 Python 提供的一种更简洁的迭代器实现方式。**
+
+### 5）生成器的实际用途：分批处理数据案例
+
+```
+import math
+
+
+def dataset_loader(batch_size):
+    with open(
+        "advanced_course/class 05/story",
+        "r",
+        encoding="utf-8"
+    ) as f:
+        lines = f.readlines()
+
+        total_batches = math.ceil( #math.ceil(number)表示对number向上取整
+            len(lines) / batch_size
+        )
+
+        for i in range(total_batches):
+            yield lines[
+                i * batch_size:
+                (i + 1) * batch_size
+            ]
+```
+
+假设文件有 20 行，每批 8 行：
+```
+第一批：0:8
+第二批：8:16
+第三批：16:24
+```
+
+第三批虽然切片终点超过列表长度，Python 也不会报错，而是返回剩余数据。
+
+生成器的核心优势是：**按需生成数据，避免一次性占用大量内存。**
+## 5. Property属性
+
+普通getter：
+```
+class Student:
+    def __init__(self, name):
+        self._name = name
+
+    def get_name(self):
+        return self._name
+```
+
+调用：
+```
+student.get_name()
+```
+
+Python 更希望调用方可以自然地写成：
+```
+student.name
+```
+同时又能保留 getter 中的业务逻辑。
+
+这就是 `property` 的作用。
+
+### 1）`@property `装饰器
+
+```
+class Student:
+    def __init__(self, name):
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
+```
+
+调用：
+```
+student = Student("Asa")
+
+print(student.name)
+```
+
+虽然调用方式看起来像访问普通属性：
+```
+student.name
+```
+
+实际上执行的是：
+```
+def name(self):
+```
+
+因此：`@property` 将方法包装成了属性。
+
+### 2）setter
+
+如果希望属性可以赋值，可以定义：
+```
+@属性名.setter
+```
+
+例如：
+```
+class Student:
+    def __init__(self, age):
+        self._age = age
+
+    @property
+    def age(self):
+        return self._age
+
+    @age.setter
+    def age(self, value):
+        if value < 0:
+            raise ValueError("年龄不能小于0")
+
+        self._age = value
+```
+
+使用：
+```
+student.age = 20
+```
+
+看起来像普通赋值，但实际执行的是：
+```
+def age(self, value):
+```
+
+因此可以在 setter 中完成：
+- 参数校验。
+- 数据转换。
+- 日志记录。
+- 状态更新。
+- 权限控制。
+
+### 3）Property的类属性写法
+
+除了装饰器写法，还可以使用`property()`创建property对象。
+
+例如：
+```
+class Student:
+    def __init__(self, age):
+        self._age = age
+
+    def get_age(self):
+        return self._age
+
+    def set_age(self, value):
+        if value < 0:
+            raise ValueError("年龄不能小于0")
+
+        self._age = value
+
+    age = property(get_age, set_age)
+```
+
+调用方式仍然是：
+```
+student.age
+student.age = 20
+```
+
+这里：
+```
+age = property(get_age, set_age)
+```
+表示把 getter 和 setter 组合成一个 property 属性。
+
+两种写法功能基本相同，但更推荐装饰器写法。
+
+`property` 本身是 Python 的内置类，
+```
+age = property(get_age, set_age)
+```
+是在创建一个 property 对象。
+
+装饰器写法，则可以理解成一种更易读的语法形式。
+
+### property的主要作用
+
+`property` 的主要作用是：
+让调用方像访问普通属性一样使用对象，同时保留方法中的逻辑与封装能力。
+
+优点包括：
+- 调用代码自然。
+- 隐藏 getter/setter。
+- 保持外部接口稳定。
+- 可以增加参数校验。
+- 可以修改内部实现而不影响调用方。
+- 有利于封装对象内部状态。
+
